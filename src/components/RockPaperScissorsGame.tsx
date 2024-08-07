@@ -1,82 +1,37 @@
-import { createEffect, createMemo, createSignal, Match, Show, Switch } from "solid-js";
+import { createSignal, For, Match, Show, Switch } from "solid-js";
 import Player from "./Player";
 import { createStore } from "solid-js/store";
-import { Item, PlayerState, Result } from "~/lib/game";
+import { calculateIfPlayer1Wins, Item, players, PlayerState, Result } from "~/lib/game";
 
 export default function RockPaperScissorsGame() {
-    const calculateIfPlayer1Wins = (player1State: PlayerState, player2State: PlayerState) => {
-
-        if (!player1State.selected || !player2State.selected) {
-            return null;
-        }
-
-        if (player1State.selected === 'rock' && player2State.selected === 'scissors') {
-            return 'win';
-        }
-
-        if (player1State.selected === 'paper' && player2State.selected === 'rock') {
-            return 'win';
-        }
-
-        if (player1State.selected === 'scissors' && player2State.selected === 'paper') {
-            return 'win';
-        }
-
-        if (player1State.selected === player2State.selected) {
-            return 'tie';
-        }
-
-        return 'loss';
-    }
-
-    const currentPlayer = 'Player 1';
-    const [player1State, setPlayer1State] = createStore<PlayerState>({
-        name: 'Player 1',
-        wins: 0,
-    })
-    const [player2State, setPlayer2State] = createStore<PlayerState>({
-        name: 'Player 2',
-        wins: 0,
-    });
     const [player1Wins, setPlayer1Wins] = createSignal<Result | null>(null);
+    const [playerState, setPlayerState] = createStore<PlayerState[]>(players.map(player => ({
+        name: player,
+        wins: 0,
+        selected: undefined
+    })));
 
-    const player1Select = (selected: Item | undefined) => {
-        setPlayer1State({
-            ...player1State,
-            selected
-        })
+    const playerSelect = (index: number, selected: Item | undefined) => {
+        setPlayerState(index, 'selected', selected);
 
-        const player1Wins = calculateIfPlayer1Wins(player1State, player2State);
+        const player1Wins = calculateIfPlayer1Wins(playerState[0], playerState[1]);
         setPlayer1Wins(player1Wins);
         if (player1Wins === 'win') {
-            setPlayer1State('wins', player1State.wins + 1)
+            setPlayerState(0, 'wins', (prev) => prev + 1)
         }
         if (player1Wins === 'loss') {
-            setPlayer2State('wins', player2State.wins + 1)
-        }
-    }
-
-    const player2Select = (selected: Item | undefined) => {
-        setPlayer2State({
-            ...player2State,
-            selected
-        })
-
-        const player1Wins = calculateIfPlayer1Wins(player1State, player2State);
-        setPlayer1Wins(player1Wins);
-        if (player1Wins === 'win') {
-            setPlayer1State('wins', player1State.wins + 1)
-        }
-        if (player1Wins === 'loss') {
-            setPlayer2State('wins', player2State.wins + 1)
+            setPlayerState(1, 'wins', (prev) => prev + 1)
         }
     }
 
     return (
         <div class="flex flex-col gap-8">
             <div class="flex gap-16">
-                <Player player={player1State} select={player1Select} />
-                <Player player={player2State} select={player2Select} />
+                <For each={playerState}>
+                    {(player, index) => (
+                        <Player index={index()} player={player} select={playerSelect} />
+                    )}
+                </For>
             </div>
             <Show when={player1Wins() !== null}>
                 <Switch>
@@ -91,8 +46,9 @@ export default function RockPaperScissorsGame() {
                     </Match>
                 </Switch>
                 <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" onClick={() => {
-                    player1Select(undefined);
-                    player2Select(undefined);
+                    setPlayerState(0, 'selected', undefined);
+                    setPlayerState(1, 'selected', undefined);
+                    setPlayer1Wins(null);
                 }}>Start New Game</button>
             </Show>
         </div>
